@@ -41,7 +41,8 @@ class Database:
             ]
             for x in data:
                 _db.execute(
-                    f"INSERT INTO daftarbelanja(nama, cek) VALUES ('{x.nama}', {1 if x.cek else 0});"
+                    "INSERT INTO daftarbelanja(nama, cek) VALUES (?, ?);",
+                    (x.nama, 1 if x.cek else 0),
                 )
             return _db
 
@@ -54,7 +55,8 @@ class Database:
 
         try:
             db.execute(
-                f"INSERT INTO daftarbelanja(nama, cek) VALUES ('{barang.nama}', {1 if barang.cek else 0})"
+                "INSERT INTO daftarbelanja(nama, cek) VALUES (?, ?)",
+                (barang.nama, 1 if barang.cek else 0),
             )
         except sqlite3.Error as e:
             raise ServerException(e.args[0])
@@ -78,7 +80,7 @@ class Database:
     def get_by_name(self, nama):
         db = self._connect()
         row = db.execute(
-            f"SELECT nama, cek FROM daftarbelanja WHERE nama='{nama}'"
+            "SELECT nama, cek FROM daftarbelanja WHERE nama=?", (nama,)
         ).fetchone()
         self._disconnect(db)
         if row is None:
