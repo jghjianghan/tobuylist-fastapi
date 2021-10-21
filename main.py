@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import RedirectResponse
 from barang import Barang
 import sqlite3
 import os
@@ -137,6 +138,11 @@ def not_found_handler(request: Request, exc: ServerException):
         status_code=500,
         content={"status": "error", "message": exc.message},
     )
+
+
+@app.get("/")
+def redirect():
+    return RedirectResponse(base_url + "/")
 
 
 @app.get(base_url + "/")
