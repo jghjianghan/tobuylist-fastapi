@@ -1,3 +1,5 @@
+from sqlite3.dbapi2 import IntegrityError
+from typing import final
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from barang import Barang
@@ -11,6 +13,11 @@ base_url = "/barang"
 class NotFoundException(Exception):
     def __init__(self, nama: str):
         self.nama = nama
+
+
+class ServerException(Exception):
+    def __init__(self, message: str):
+        self.message = message
 
 
 app = FastAPI()
@@ -42,17 +49,25 @@ class Database:
         db.commit()
         db.close()
 
-    def insert(self, barang):
-        self._db.append(barang)
+    def insert(self, barang: Barang):
+        db = self._connect()
+
+        try:
+            db.execute(
+                f"INSERT INTO daftarbelanja(nama, cek) VALUES ('{barang.nama}', {1 if barang.cek else 0})"
+            )
+        except sqlite3.Error as e:
+            raise ServerException(e.args[0])
+        finally:
+            self._disconnect(db)
+
+        return barang
 
     def get_all(self):
         db = self._connect()
         results = db.execute("SELECT nama, cek FROM daftarbelanja").fetchall()
         self._disconnect(db)
 
-        # return list(
-        #     map(lambda row: Barang(row[0], True if row[1] == 1 else False), results)
-        # )
         return list(
             map(
                 lambda row: Barang(nama=row[0], cek=True if row[1] == 1 else False),
@@ -85,6 +100,14 @@ def not_found_handler(request: Request, exc: NotFoundException):
     return JSONResponse(
         status_code=404,
         content={"status": "error", "message": f"{exc.nama} tidak ditemukan"},
+    )
+
+
+@app.exception_handler(ServerException)
+def not_found_handler(request: Request, exc: ServerException):
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "message": exc.message},
     )
 
 
