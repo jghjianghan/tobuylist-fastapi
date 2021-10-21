@@ -70,13 +70,21 @@ class Database:
 
         return list(
             map(
-                lambda row: Barang(nama=row[0], cek=True if row[1] == 1 else False),
+                lambda row: Barang(nama=row[0], cek=(row[1] == 1)),
                 results,
             )
         )
 
     def get_by_name(self, nama):
-        return next((barang for barang in self._db if barang.nama == nama))
+        db = self._connect()
+        row = db.execute(
+            f"SELECT nama, cek FROM daftarbelanja WHERE nama='{nama}'"
+        ).fetchone()
+        self._disconnect(db)
+        if row is None:
+            raise NotFoundException(nama)
+        else:
+            return Barang(nama=row[0], cek=(row[1] == 1))
 
     def delete(self, nama):
         item = next((barang for barang in self._db if barang.nama == nama))
