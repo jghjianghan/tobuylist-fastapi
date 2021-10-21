@@ -1,7 +1,9 @@
-from enum import Flag
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from barang import Barang
+import sqlite3
+import os
+
 
 base_url = "/barang"
 
@@ -15,20 +17,48 @@ app = FastAPI()
 
 
 class Database:
-    def __init__(self):
-        self._db = [
-            Barang(nama="Tomat", cek=True),
-            Barang(nama="Jeruk", cek=True),
-            Barang(nama="Roti", cek=False),
-            Barang(nama="Sabun Cuci", cek=False),
-            Barang(nama="Sabun Mandi", cek=False),
-        ]
+    def _connect(self):
+        if os.path.exists("./daftarbelanja.sqlite"):
+            return sqlite3.connect("./daftarbelanja.sqlite")
+        else:
+            _db = sqlite3.connect("./daftarbelanja.sqlite")
+            _db.execute(
+                "CREATE TABLE daftarbelanja (nama TEXT PRIMARY KEY, cek INTEGER);"
+            )
+            data = [
+                Barang(nama="Tomat", cek=True),
+                Barang(nama="Jeruk", cek=True),
+                Barang(nama="Roti", cek=False),
+                Barang(nama="Sabun Cuci", cek=False),
+                Barang(nama="Sabun Mandi", cek=False),
+            ]
+            for x in data:
+                _db.execute(
+                    f"INSERT INTO daftarbelanja(nama, cek) VALUES ('{x.nama}', {1 if x.cek else 0});"
+                )
+            return _db
+
+    def _disconnect(self, db):
+        db.commit()
+        db.close()
 
     def insert(self, barang):
         self._db.append(barang)
 
     def get_all(self):
-        return self._db
+        db = self._connect()
+        results = db.execute("SELECT nama, cek FROM daftarbelanja").fetchall()
+        self._disconnect(db)
+
+        # return list(
+        #     map(lambda row: Barang(row[0], True if row[1] == 1 else False), results)
+        # )
+        return list(
+            map(
+                lambda row: Barang(nama=row[0], cek=True if row[1] == 1 else False),
+                results,
+            )
+        )
 
     def get_by_name(self, nama):
         return next((barang for barang in self._db if barang.nama == nama))
