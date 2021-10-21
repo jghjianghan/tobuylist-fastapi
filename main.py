@@ -89,9 +89,13 @@ class Database:
             return Barang(nama=row[0], cek=(row[1] == 1))
 
     def delete(self, nama):
-        item = next((barang for barang in self._db if barang.nama == nama))
-        self._db.remove(item)
-        return item
+        db = self._connect()
+        affectedRow = db.execute(
+            "DELETE FROM daftarbelanja WHERE nama=?", (nama,)
+        ).rowcount
+        self._disconnect(db)
+        if affectedRow <= 0:
+            raise NotFoundException(nama)
 
     def toggle(self, nama):
         for i in range(len(self._db)):
@@ -143,10 +147,8 @@ def create_barang(nama_barang):
 
 @app.delete(base_url + "/{nama_barang}")
 def delete_barang(nama_barang):
-    try:
-        return {"status": "ok", "item": db.delete(nama_barang)}
-    except StopIteration:
-        raise NotFoundException(nama_barang)
+    db.delete(nama_barang)
+    return {"status": "ok"}
 
 
 @app.post(base_url + "/{nama_barang}")
