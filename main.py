@@ -1,7 +1,6 @@
-from sqlite3.dbapi2 import IntegrityError
-from typing import final
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from barang import Barang
 import sqlite3
 import os
@@ -98,15 +97,30 @@ class Database:
             raise NotFoundException(nama)
 
     def toggle(self, nama):
-        for i in range(len(self._db)):
-            if self._db[i].nama == nama:
-                self._db[i].cek = not self._db[i].cek
-                return self._db[i]
+        db = self._connect()
+        affectedRow = db.execute(
+            "UPDATE daftarbelanja SET cek = 1 - cek WHERE nama=?", (nama,)
+        ).rowcount
+        if affectedRow <= 0:
+            self._disconnect(db)
+            raise NotFoundException(nama)
 
-        raise NotFoundException(nama)
+        row = db.execute(
+            "SELECT nama, cek FROM daftarbelanja WHERE nama=?", (nama,)
+        ).fetchone()
+        self._disconnect(db)
+        return Barang(nama=row[0], cek=(row[1] == 1))
 
 
 db = Database()
+
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={"status": "error", "message": "Layanan tidak ditemukan"},
+    )
 
 
 @app.exception_handler(NotFoundException)
