@@ -7,7 +7,7 @@ import sqlite3
 import os
 
 
-base_url = "/barang"
+base_url = "/barangbswkm"
 
 # Custom errors
 class NotFoundException(Exception):
